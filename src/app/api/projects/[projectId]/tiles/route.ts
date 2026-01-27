@@ -191,7 +191,7 @@ export async function POST(
       agentId,
       role,
       sessionKey,
-      model: null,
+      model: "openai-codex/gpt-5.2-codex",
       thinkingLevel: null,
       position: { x: 80 + offset, y: 200 + offset },
       size: { width: 720, height: 560 },

@@ -89,7 +89,7 @@ const buildSessionKey = (agentId: string) => `agent:${agentId}:main`;
 const createRuntimeTile = (tile: ProjectTile): AgentTile => ({
   ...tile,
   sessionKey: tile.sessionKey || buildSessionKey(tile.agentId),
-  model: tile.model ?? null,
+  model: tile.model ?? "openai-codex/gpt-5.2-codex",
   thinkingLevel: tile.thinkingLevel ?? "low",
   status: "idle",
   outputLines: [],
