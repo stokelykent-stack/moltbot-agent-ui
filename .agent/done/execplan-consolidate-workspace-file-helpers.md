@@ -1,105 +1,82 @@
-# Consolidate workspace file helpers
+# Consolidate workspace files read/write helpers
 
 This ExecPlan is a living document. The sections `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
-This repository does not include PLANS.md. The source of truth for this plan is `.agent/PLANS.md` from the repository root; this document must be maintained in accordance with `.agent/PLANS.md`.
+This plan must be maintained in accordance with `.agent/PLANS.md` in this repository.
 
 ## Purpose / Big Picture
 
-Workspace file name validation and empty-state construction are duplicated between the UI and server. After this change, a single shared helper module will define workspace file validation and default state so the UI tabs, API validation, and workspace provisioning all agree on the same list and behaviors. A user will see consistent workspace file tabs and validation errors because the same shared helpers drive both client and server logic.
+Workspace files (AGENTS.md, SOUL.md, etc.) are read and written through the workspace-files API route, which currently duplicates filesystem loops for reading and writing each file. After this change, there will be a single shared set of workspace file read/write helpers in `src/lib/projects/workspaceFiles.server.ts` that the API route uses. This keeps behavior identical while reducing duplicated file handling logic.
 
 ## Progress
 
-- [x] (2026-01-29 04:27Z) Add shared workspace file helpers in `src/lib/projects/workspaceFiles.ts` and unit tests to pin behavior.
-- [x] (2026-01-29 04:27Z) Replace local duplicates in `src/lib/projects/workspaceFiles.server.ts`, `src/features/canvas/components/AgentTile.tsx`, and update API routes to use shared validation helpers.
-- [x] (2026-01-29 04:27Z) Verify tests and typecheck after refactor.
+- [x] (2026-01-29 21:10Z) Add shared workspace file read/write helpers with unit tests that define their behavior. Tests: `npm test -- --run tests/unit/workspaceFiles.test.ts`.
+- [x] (2026-01-29 21:10Z) Update workspace-files API route to use the shared helpers; re-run tests. Tests: `npm test -- --run tests/unit/projectResolve.test.ts`.
 
 ## Surprises & Discoveries
 
-- Observation: The workspace-files API route imported `isWorkspaceFileName` from the server module, so moving the helper required updating the import to the shared module.
-  Evidence: `tsc --noEmit` reported missing export in `src/lib/projects/workspaceFiles.server.ts` until the route import was updated.
+- None yet.
 
 ## Decision Log
 
-- Decision: Consolidate workspace file validation and default state in the shared `src/lib/projects/workspaceFiles.ts` module rather than adding new UI-only helpers.
-  Rationale: The file list is already shared across client and server, and keeping validation and default state next to it prevents drift with minimal blast radius.
-  Date/Author: 2026-01-29, Codex.
+- Decision: Centralize workspace file read/write helpers in `src/lib/projects/workspaceFiles.server.ts` and reuse them in the workspace-files API route.
+  Rationale: The server helper module already owns workspace file provisioning and per-file reads, so adding list-level helpers there minimizes blast radius while removing duplicated filesystem loops.
+  Date/Author: 2026-01-29 / Codex
 
 ## Outcomes & Retrospective
 
-Workspace file validation and default state creation now live in `src/lib/projects/workspaceFiles.ts`. The server, UI, and API route all import shared helpers, and `npm test -- tests/unit/workspaceFiles.test.ts` plus `npm run typecheck` pass.
+- Centralized workspace file list read/write logic in `src/lib/projects/workspaceFiles.server.ts`, updated the API route to use the helpers, and added unit coverage for validation behavior. No functional changes to responses or errors.
+
+Plan update note: Marked milestones complete with test evidence and recorded the outcome after implementation.
 
 ## Context and Orientation
 
-Workspace file definitions live in `src/lib/projects/workspaceFiles.ts` as `WORKSPACE_FILE_NAMES`, `WORKSPACE_FILE_META`, and `WORKSPACE_FILE_PLACEHOLDERS`. The server module `src/lib/projects/workspaceFiles.server.ts` defines its own `isWorkspaceFileName`, while the UI component `src/features/canvas/components/AgentTile.tsx` defines `buildWorkspaceState` and a local `isWorkspaceFileName`. This duplication makes it easy for validation and UI state to drift if the file list changes. Consolidating these helpers into the shared module keeps client and server behavior aligned.
+Workspace file constants and validation live in `src/lib/projects/workspaceFiles.ts`. Server-side helpers for provisioning and reading individual files live in `src/lib/projects/workspaceFiles.server.ts`. The API route at `src/app/api/projects/[projectId]/tiles/[tileId]/workspace-files/route.ts` currently reads all workspace files via `WORKSPACE_FILE_NAMES.map(readWorkspaceFile)` in both GET and PUT, and writes files with an inline `fs.writeFileSync` loop after validating file names and content. The goal is to add list-level helpers in the server module, reuse them in the API route, and keep existing validation errors and responses unchanged.
 
 ## Plan of Work
 
-First, add shared helpers to `src/lib/projects/workspaceFiles.ts` for validation and default state construction. Next, add unit tests that verify the new helpers behave as expected. Then, update `src/lib/projects/workspaceFiles.server.ts` and `src/features/canvas/components/AgentTile.tsx` to import the shared helpers and delete their local versions. Finally, run the focused unit test and typecheck to confirm the refactor is safe.
+Add `readWorkspaceFiles` and `writeWorkspaceFiles` helpers to `src/lib/projects/workspaceFiles.server.ts`. `readWorkspaceFiles` should return the same list shape as the API route currently returns, and `writeWorkspaceFiles` should validate each entry’s name and content (matching the current error messages), write the files, and return the updated list. Extend `tests/unit/workspaceFiles.test.ts` to cover the new helpers and their validation behavior using temporary directories. Then update the workspace-files API route to call the new helpers and remove the duplicated read/write loops. Finally, run the unit tests to confirm behavior is unchanged.
 
 ## Concrete Steps
 
-From the repository root `/Users/georgepickett/clawdbot-agent-ui`:
+Run these commands from the repository root (`/Users/georgepickett/clawdbot-agent-ui`). First, inspect the existing workspace file route and server helpers to confirm the duplicated loops.
 
-1. Add shared helpers in `src/lib/projects/workspaceFiles.ts`:
+    rg -n "readWorkspaceFile|WORKSPACE_FILE_NAMES|writeFileSync" src/app/api/projects/\[projectId\]/tiles/\[tileId\]/workspace-files/route.ts src/lib/projects/workspaceFiles.server.ts
 
-   - Export `isWorkspaceFileName(value: string): value is WorkspaceFileName`.
-   - Export `createWorkspaceFilesState(): Record<WorkspaceFileName, { content: string; exists: boolean }>`.
+Then add the new helpers in `src/lib/projects/workspaceFiles.server.ts` and extend `tests/unit/workspaceFiles.test.ts`. Update the route to use the helpers and remove the inline loops. Finally, run the unit tests.
 
-2. Update unit tests in `tests/unit/workspaceFiles.test.ts` to cover:
-
-   - `isWorkspaceFileName` returns true for known names and false for unknown names.
-   - `createWorkspaceFilesState` returns entries for every `WORKSPACE_FILE_NAMES` value with empty content and `exists: false`.
-
-3. Update server helper usage:
-
-   - In `src/lib/projects/workspaceFiles.server.ts`, remove the local `isWorkspaceFileName` and import the shared one from `src/lib/projects/workspaceFiles.ts`.
-
-4. Update UI usage:
-
-   - In `src/features/canvas/components/AgentTile.tsx`, remove local `buildWorkspaceState` and `isWorkspaceFileName` and use the shared helpers from `src/lib/projects/workspaceFiles.ts`.
-
-5. Run tests and typecheck:
-
-   npm test -- tests/unit/workspaceFiles.test.ts
-   npm run typecheck
+    npm test -- --run tests/unit/workspaceFiles.test.ts
+    npm test -- --run tests/unit/projectResolve.test.ts
 
 ## Validation and Acceptance
 
-Acceptance means the only `isWorkspaceFileName` and workspace default-state constructors live in `src/lib/projects/workspaceFiles.ts`, and both UI and server import them. Unit tests verify the helpers, and the focused tests and typecheck pass.
+Acceptance is met when the workspace-files API route no longer contains its own list-level read/write loops and instead calls `readWorkspaceFiles` and `writeWorkspaceFiles` from `src/lib/projects/workspaceFiles.server.ts`. The new unit tests must pass and demonstrate that invalid names and invalid content return the same error messages as before, and that valid writes persist and are returned by subsequent reads. Existing unit tests must continue to pass.
 
-Verification workflow by milestone:
+For milestone 1, write tests in `tests/unit/workspaceFiles.test.ts` that assert `readWorkspaceFiles` returns entries for every `WORKSPACE_FILE_NAMES` value after provisioning, that `writeWorkspaceFiles` updates content and returns the updated list, and that invalid entries return `{ ok: false, error: "Invalid file name: ..." }` or `{ ok: false, error: "Invalid content for ..." }` exactly as the route currently does. Implement the helpers in `src/lib/projects/workspaceFiles.server.ts` so the tests fail before and pass after, then run `npm test -- --run tests/unit/workspaceFiles.test.ts`. Commit with message `Milestone 1: add workspace file read/write helpers`.
 
-Milestone 1: Shared helpers + tests.
-- Tests to write: Extend `tests/unit/workspaceFiles.test.ts` with the new helper tests. Run `npm test -- tests/unit/workspaceFiles.test.ts` and confirm the tests fail before the helpers exist.
-- Implementation: Add and export `isWorkspaceFileName` and `createWorkspaceFilesState` in `src/lib/projects/workspaceFiles.ts`.
-- Verification: Re-run `npm test -- tests/unit/workspaceFiles.test.ts` and confirm all tests pass.
-- Commit: `git commit -am "Milestone 1: add shared workspace file helpers"`.
-
-Milestone 2: Replace duplicates.
-- Tests to write: No new tests required beyond Milestone 1.
-- Implementation: Update `src/lib/projects/workspaceFiles.server.ts` and `src/features/canvas/components/AgentTile.tsx` to use the shared helpers and delete local duplicates.
-- Verification: Run `npm test -- tests/unit/workspaceFiles.test.ts` and `npm run typecheck`.
-- Commit: `git commit -am "Milestone 2: reuse workspace file helpers"`.
+For milestone 2, update `src/app/api/projects/[projectId]/tiles/[tileId]/workspace-files/route.ts` to call the new helpers and remove its duplicated file loops, keeping the same status codes and error messages. Run `npm test -- --run tests/unit/projectResolve.test.ts` to ensure no regressions, then commit with message `Milestone 2: reuse workspace file helpers in API route`.
 
 ## Idempotence and Recovery
 
-These steps are safe to rerun. If a refactor introduces errors, restore the local helper in the affected file and re-run the unit test to isolate the breakage. The shared helpers are pure and do not access the filesystem, so rollback is limited to import changes.
+These changes are safe to re-run. The helpers are pure filesystem operations scoped to the workspace directory, and no migrations or destructive operations are required. If a step fails, revert the last edits and re-apply.
 
 ## Artifacts and Notes
 
-Expected unit test transcript example:
-
-    $ npm test -- tests/unit/workspaceFiles.test.ts
-    ✓ tests/unit/workspaceFiles.test.ts (4)
+After the refactor, searching the workspace-files route for `readWorkspaceFile` or `fs.writeFileSync` should show only helper usage and not inline loops. The server helper module should own both single-file and list-level workspace file operations.
 
 ## Interfaces and Dependencies
 
-`src/lib/projects/workspaceFiles.ts` should export:
+Define the helpers in `src/lib/projects/workspaceFiles.server.ts` with these shapes, and keep existing exports intact:
 
-- `isWorkspaceFileName(value: string): value is WorkspaceFileName`
-- `createWorkspaceFilesState(): Record<WorkspaceFileName, { content: string; exists: boolean }>`
+    export const readWorkspaceFiles: (workspaceDir: string) => Array<{ name: WorkspaceFileName; content: string; exists: boolean }>;
 
-These helpers must be pure and should not touch the filesystem.
+    export type WorkspaceFilesWriteResult =
+      | { ok: true; files: Array<{ name: WorkspaceFileName; content: string; exists: boolean }> }
+      | { ok: false; error: string };
 
-Plan update (2026-01-29 04:27Z): Marked milestones complete and recorded the API route import adjustment and validation results.
+    export const writeWorkspaceFiles: (
+      workspaceDir: string,
+      files: Array<{ name: string; content: unknown }>
+    ) => WorkspaceFilesWriteResult;
+
+The API route should translate `ok: false` into a 400 response with the helper’s error string.
