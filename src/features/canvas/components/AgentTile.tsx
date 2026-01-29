@@ -14,6 +14,8 @@ import {
   updateProjectTileWorkspaceFiles,
 } from "@/lib/projects/client";
 import {
+  createWorkspaceFilesState,
+  isWorkspaceFileName,
   WORKSPACE_FILE_META,
   WORKSPACE_FILE_NAMES,
   WORKSPACE_FILE_PLACEHOLDERS,
@@ -23,14 +25,6 @@ import { MAX_TILE_HEIGHT, MIN_TILE_SIZE } from "@/lib/canvasTileDefaults";
 import { AgentAvatar } from "./AgentAvatar";
 
 const HEARTBEAT_INTERVAL_OPTIONS = ["15m", "30m", "1h", "2h", "6h", "12h", "24h"];
-
-const buildWorkspaceState = () =>
-  Object.fromEntries(
-    WORKSPACE_FILE_NAMES.map((name) => [name, { content: "", exists: false }])
-  ) as Record<WorkspaceFileName, { content: string; exists: boolean }>;
-
-const isWorkspaceFileName = (value: string): value is WorkspaceFileName =>
-  WORKSPACE_FILE_NAMES.includes(value as WorkspaceFileName);
 
 type AgentTileProps = {
   tile: AgentTileType;
@@ -67,7 +61,7 @@ export const AgentTile = ({
 }: AgentTileProps) => {
   const [nameDraft, setNameDraft] = useState(tile.name);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [workspaceFiles, setWorkspaceFiles] = useState(buildWorkspaceState);
+  const [workspaceFiles, setWorkspaceFiles] = useState(createWorkspaceFilesState);
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceFileName>(
     WORKSPACE_FILE_NAMES[0]
   );
@@ -336,7 +330,7 @@ export const AgentTile = ({
     setWorkspaceError(null);
     try {
       const result = await fetchProjectTileWorkspaceFiles(projectId, tile.id);
-      const nextState = buildWorkspaceState();
+      const nextState = createWorkspaceFilesState();
       for (const file of result.files) {
         if (!isWorkspaceFileName(file.name)) continue;
         nextState[file.name] = {
@@ -367,7 +361,7 @@ export const AgentTile = ({
         })),
       };
       const result = await updateProjectTileWorkspaceFiles(projectId, tile.id, payload);
-      const nextState = buildWorkspaceState();
+      const nextState = createWorkspaceFilesState();
       for (const file of result.files) {
         if (!isWorkspaceFileName(file.name)) continue;
         nextState[file.name] = {

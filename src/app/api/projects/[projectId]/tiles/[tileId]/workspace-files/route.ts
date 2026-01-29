@@ -5,8 +5,12 @@ import path from "node:path";
 
 import { logger } from "@/lib/logger";
 import { resolveAgentWorkspaceDir } from "@/lib/projects/agentWorkspace";
-import { WORKSPACE_FILE_NAMES, type WorkspaceFileName } from "@/lib/projects/workspaceFiles";
-import { isWorkspaceFileName, readWorkspaceFile } from "@/lib/projects/workspaceFiles.server";
+import {
+  WORKSPACE_FILE_NAMES,
+  isWorkspaceFileName,
+  type WorkspaceFileName,
+} from "@/lib/projects/workspaceFiles";
+import { readWorkspaceFile } from "@/lib/projects/workspaceFiles.server";
 import { resolveProjectTile } from "@/lib/projects/resolve";
 import type { ProjectTileWorkspaceFilesUpdatePayload } from "@/lib/projects/types";
 import { loadStore } from "../../../../store";

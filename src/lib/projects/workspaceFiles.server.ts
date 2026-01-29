@@ -1,7 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { WORKSPACE_FILE_NAMES, type WorkspaceFileName } from "./workspaceFiles";
+import {
+  WORKSPACE_FILE_NAMES,
+  isWorkspaceFileName,
+  type WorkspaceFileName,
+} from "./workspaceFiles";
 
 const ensureDir = (dir: string) => {
   if (fs.existsSync(dir)) {
@@ -31,9 +35,6 @@ const deleteFileIfExists = (filePath: string) => {
   }
   fs.rmSync(filePath);
 };
-
-export const isWorkspaceFileName = (value: string): value is WorkspaceFileName =>
-  WORKSPACE_FILE_NAMES.includes(value as WorkspaceFileName);
 
 export const readWorkspaceFile = (workspaceDir: string, name: WorkspaceFileName) => {
   const filePath = path.join(workspaceDir, name);
