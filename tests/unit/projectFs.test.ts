@@ -102,6 +102,7 @@ describe("collectAgentIdsAndDeleteArtifacts", () => {
     agentId,
     role: "coding",
     sessionKey: `agent:${agentId}:main`,
+    workspacePath: `/tmp/worktrees/${agentId}`,
     model: "openai-codex/gpt-5.2-codex",
     thinkingLevel: null,
     avatarSeed: agentId,
@@ -114,7 +115,13 @@ describe("collectAgentIdsAndDeleteArtifacts", () => {
     process.env.OPENCLAW_STATE_DIR = tempDir;
     const projectId = "project-1";
     const agentId = "agent-1";
-    const workspaceDir = path.join(tempDir, "agent-canvas", "workspaces", projectId, "agents", agentId);
+    const workspaceDir = path.join(
+      tempDir,
+      "agent-canvas",
+      "worktrees",
+      projectId,
+      agentId
+    );
     const stateDir = path.join(tempDir, "agents", agentId);
     fs.mkdirSync(workspaceDir, { recursive: true });
     fs.mkdirSync(stateDir, { recursive: true });

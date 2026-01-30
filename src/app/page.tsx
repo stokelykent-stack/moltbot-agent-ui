@@ -18,6 +18,7 @@ import {
 } from "@/features/canvas/state/store";
 import { createProjectDiscordChannel } from "@/lib/projects/client";
 import { createRandomAgentName, normalizeAgentName } from "@/lib/names/agentNames";
+import { buildAgentInstruction } from "@/lib/projects/message";
 import type { AgentTile, ProjectRuntime } from "@/features/canvas/state/store";
 import { logger } from "@/lib/logger";
 // (CANVAS_BASE_ZOOM import removed)
@@ -148,17 +149,6 @@ const mergeHistoryWithPending = (historyLines: string[], currentLines: string[])
     }
   }
   return merged;
-};
-
-const buildProjectMessage = (project: ProjectRuntime | null, message: string) => {
-  const trimmed = message.trim();
-  if (!project || !project.repoPath.trim()) {
-    return trimmed;
-  }
-  if (trimmed.startsWith("/")) {
-    return trimmed;
-  }
-  return `Workspace path: ${project.repoPath}. Operate within this repository. You may also read/write your agent workspace files (IDENTITY.md, USER.md, HEARTBEAT.md, TOOLS.md, MEMORY.md). Use MEMORY.md or memory/*.md directly for durable memory; do not rely on memory_search.\n\n${trimmed}`;
 };
 
 const findTileBySessionKey = (
@@ -614,7 +604,11 @@ const AgentCanvasPage = () => {
         }
         await client.call("chat.send", {
           sessionKey,
-          message: buildProjectMessage(project, trimmed),
+          message: buildAgentInstruction({
+            worktreePath: tile.workspacePath,
+            repoPath: project.repoPath,
+            message: trimmed,
+          }),
           deliver: false,
           idempotencyKey: runId,
         });

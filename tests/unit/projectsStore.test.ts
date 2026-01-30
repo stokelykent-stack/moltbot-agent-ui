@@ -25,6 +25,7 @@ const makeTile = (id: string): ProjectTile => ({
   agentId: `agent-${id}`,
   role: "coding",
   sessionKey: `agent:agent-${id}:main`,
+  workspacePath: `/tmp/worktrees/${id}`,
   model: "openai-codex/gpt-5.2-codex",
   thinkingLevel: null,
   avatarSeed: `agent-${id}`,

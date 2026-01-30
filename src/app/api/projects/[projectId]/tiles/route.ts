@@ -11,7 +11,11 @@ import type {
   ProjectTileCreateResult,
   ProjectTileRole,
 } from "@/lib/projects/types";
-import { resolveAgentWorkspaceDir } from "@/lib/projects/agentWorkspace";
+import {
+  ensureAgentWorktree,
+  ensureWorktreeIgnores,
+  resolveAgentWorktreeDir,
+} from "@/lib/projects/worktrees.server";
 import { resolveStateDir } from "@/lib/clawdbot/paths";
 import { resolveProjectFromParams } from "@/lib/projects/resolve.server";
 import {
@@ -20,6 +24,7 @@ import {
 } from "@/lib/clawdbot/config";
 import { generateAgentId } from "@/lib/ids/agentId";
 import { provisionWorkspaceFiles } from "@/lib/projects/workspaceFiles.server";
+import { WORKSPACE_FILE_NAMES } from "@/lib/projects/workspaceFiles";
 import { addTileToProject, saveStore } from "../../store";
 import { buildSessionKey } from "@/lib/projects/sessionKey";
 
@@ -84,13 +89,21 @@ export async function POST(
     }
     const sessionKey = buildSessionKey(agentId);
     const offset = project.tiles.length * 36;
-    const workspaceDir = resolveAgentWorkspaceDir(resolvedProjectId, agentId);
+    const worktreeDir = resolveAgentWorktreeDir(resolvedProjectId, agentId);
+    const { warnings: worktreeWarnings } = ensureAgentWorktree(
+      project.repoPath,
+      worktreeDir,
+      `agent/${agentId}`
+    );
+    ensureWorktreeIgnores(worktreeDir, [...WORKSPACE_FILE_NAMES, "memory/"]);
+    const { warnings: workspaceWarnings } = provisionWorkspaceFiles(worktreeDir);
     const tile: ProjectTile = {
       id: tileId,
       name,
       agentId,
       role,
       sessionKey,
+      workspacePath: worktreeDir,
       model: "openai-codex/gpt-5.2-codex",
       thinkingLevel: null,
       avatarSeed: agentId,
@@ -101,13 +114,16 @@ export async function POST(
     const nextStore = addTileToProject(store, resolvedProjectId, tile);
     saveStore(nextStore);
 
-    const { warnings: workspaceWarnings } = provisionWorkspaceFiles(workspaceDir);
-    const warnings = [...workspaceWarnings, ...copyAuthProfiles(agentId)];
+    const warnings = [
+      ...worktreeWarnings,
+      ...workspaceWarnings,
+      ...copyAuthProfiles(agentId),
+    ];
     const { warnings: configWarnings } = updateClawdbotConfig((config) =>
       upsertAgentEntry(config, {
         agentId,
         agentName: name,
-        workspaceDir,
+        workspaceDir: worktreeDir,
       })
     );
     warnings.push(...configWarnings);

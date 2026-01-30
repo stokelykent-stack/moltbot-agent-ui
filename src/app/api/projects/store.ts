@@ -3,6 +3,7 @@ import path from "node:path";
 
 import type { Project, ProjectTile, ProjectsStore } from "@/lib/projects/types";
 import { resolveAgentCanvasDir } from "@/lib/projects/agentWorkspace";
+import { resolveAgentWorktreeDir } from "@/lib/projects/worktrees.server";
 import { parseAgentIdFromSessionKey } from "@/lib/projects/sessionKey";
 
 const STORE_VERSION: ProjectsStore["version"] = 2;
@@ -25,15 +26,27 @@ export const defaultStore = (): ProjectsStore => ({
 
 export const normalizeProjectsStore = (store: ProjectsStore): ProjectsStore => {
   const projects = Array.isArray(store.projects) ? store.projects : [];
+  const normalizedProjects = projects.map((project) => ({
+    ...project,
+    tiles: Array.isArray(project.tiles)
+      ? project.tiles.map((tile) => ({
+          ...tile,
+          workspacePath:
+            typeof tile.workspacePath === "string" && tile.workspacePath.trim()
+              ? tile.workspacePath
+              : resolveAgentWorktreeDir(project.id, tile.agentId),
+        }))
+      : [],
+  }));
   const activeProjectId =
     typeof store.activeProjectId === "string" &&
-    projects.some((project) => project.id === store.activeProjectId)
+    normalizedProjects.some((project) => project.id === store.activeProjectId)
       ? store.activeProjectId
-      : projects[0]?.id ?? null;
+      : normalizedProjects[0]?.id ?? null;
   return {
     version: STORE_VERSION,
     activeProjectId,
-    projects,
+    projects: normalizedProjects,
   };
 };
 
@@ -124,6 +137,7 @@ type RawTile = {
   id: string;
   name: string;
   sessionKey: string;
+  workspacePath?: string;
   model?: string | null;
   thinkingLevel?: string | null;
   position: { x: number; y: number };
@@ -149,6 +163,10 @@ const migrateV1Store = (store: { activeProjectId?: string | null; projects: RawP
         typeof tile.sessionKey === "string" ? tile.sessionKey : ""
       ),
       role: "coding" as const,
+      workspacePath: resolveAgentWorktreeDir(
+        project.id,
+        parseAgentIdFromSessionKey(typeof tile.sessionKey === "string" ? tile.sessionKey : "")
+      ),
     })),
   }));
   return {

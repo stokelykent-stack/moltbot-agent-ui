@@ -11,7 +11,7 @@ export const resolveAgentCanvasDir = (
 };
 
 export const resolveProjectAgentsRoot = (projectId: string) => {
-  return path.join(resolveAgentCanvasDir(), "workspaces", projectId, "agents");
+  return path.join(resolveAgentCanvasDir(), "worktrees", projectId);
 };
 
 export const resolveAgentWorkspaceDir = (projectId: string, agentId: string) => {

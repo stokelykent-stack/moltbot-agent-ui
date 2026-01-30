@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { resolveStateDir } from "@/lib/clawdbot/paths";
 import type { ProjectTile } from "@/lib/projects/types";
-import { resolveAgentWorkspaceDir } from "./agentWorkspace";
+import { resolveAgentWorktreeDir } from "./worktrees.server";
 
 export const resolveAgentStateDir = (agentId: string) => {
   return path.join(resolveStateDir(), "agents", agentId);
@@ -22,7 +22,7 @@ export const deleteDirIfExists = (targetPath: string, label: string, warnings: s
 };
 
 export const deleteAgentArtifacts = (projectId: string, agentId: string, warnings: string[]) => {
-  const workspaceDir = resolveAgentWorkspaceDir(projectId, agentId);
+  const workspaceDir = resolveAgentWorktreeDir(projectId, agentId);
   deleteDirIfExists(workspaceDir, "Agent workspace", warnings);
 
   const agentDir = resolveAgentStateDir(agentId);

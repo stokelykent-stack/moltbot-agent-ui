@@ -6,6 +6,7 @@ export type ProjectTile = {
   agentId: string;
   role: ProjectTileRole;
   sessionKey: string;
+  workspacePath: string;
   model?: string | null;
   thinkingLevel?: string | null;
   avatarSeed?: string | null;

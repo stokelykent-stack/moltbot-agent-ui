@@ -10,6 +10,7 @@ const buildStore = (): ProjectsStore => {
     agentId: "agent-1",
     role: "coding",
     sessionKey: "agent:agent-1:main",
+    workspacePath: "/tmp/worktrees/agent-1",
     model: "openai-codex/gpt-5.2-codex",
     thinkingLevel: null,
     avatarSeed: "agent-1",

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import fs from "node:fs";
 
 import { logger } from "@/lib/logger";
-import { resolveAgentWorkspaceDir } from "@/lib/projects/agentWorkspace";
+import { resolveAgentWorktreeDir } from "@/lib/projects/worktrees.server";
 import {
   readWorkspaceFiles,
   writeWorkspaceFiles,
@@ -23,7 +23,7 @@ export async function GET(
       return resolved.response;
     }
     const { projectId: resolvedProjectId, tile } = resolved;
-    const workspaceDir = resolveAgentWorkspaceDir(resolvedProjectId, tile.agentId);
+    const workspaceDir = resolveAgentWorktreeDir(resolvedProjectId, tile.agentId);
     if (!fs.existsSync(workspaceDir)) {
       return NextResponse.json({ error: "Agent workspace not found." }, { status: 404 });
     }
@@ -46,7 +46,7 @@ export async function PUT(
       return resolved.response;
     }
     const { projectId: resolvedProjectId, tile } = resolved;
-    const workspaceDir = resolveAgentWorkspaceDir(resolvedProjectId, tile.agentId);
+    const workspaceDir = resolveAgentWorktreeDir(resolvedProjectId, tile.agentId);
     if (!fs.existsSync(workspaceDir)) {
       return NextResponse.json({ error: "Agent workspace not found." }, { status: 404 });
     }
